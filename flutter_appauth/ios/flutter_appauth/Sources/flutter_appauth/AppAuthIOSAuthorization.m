@@ -38,10 +38,8 @@
                       scope:[OIDScopeUtilities scopesWithArray:scopes]
                 redirectURL:[NSURL URLWithString:redirectUrl]
                responseType:OIDResponseTypeCode
-                      state:[OIDAuthorizationRequest generateState]
-                      nonce:nonce != nil
-                                ? nonce
-                                : [OIDAuthorizationRequest generateState]
+                      state:nil
+                      nonce:nonce
                codeVerifier:codeVerifier
               codeChallenge:codeChallenge
         codeChallengeMethod:codeChallengeMethod
@@ -105,9 +103,9 @@
                                    setObject:authorizationResponse.request
                                                  .codeVerifier
                                       forKey:@"codeVerifier"];
-                               [processedResponse
-                                   setObject:authorizationResponse.request.nonce
-                                      forKey:@"nonce"];
+                             if (authorizationResponse.request.nonce != nil) {
+                                 [processedResponse setObject:authorizationResponse.request.nonce forKey:@"nonce"];
+                             }
                                result(processedResponse);
                              } else {
                                [FlutterAppAuth

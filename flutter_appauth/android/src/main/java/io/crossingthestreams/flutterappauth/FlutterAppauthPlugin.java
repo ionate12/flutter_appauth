@@ -4,10 +4,13 @@ import android.app.Activity;
 import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.Color;
 import android.net.Uri;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.browser.customtabs.CustomTabColorSchemeParams;
+import androidx.browser.customtabs.CustomTabsIntent;
 
 import net.openid.appauth.AppAuthConfiguration;
 import net.openid.appauth.AuthorizationException;
@@ -358,6 +361,7 @@ public class FlutterAppauthPlugin
         if (tokenRequestParameters.serviceConfigurationParameters != null) {
             AuthorizationServiceConfiguration serviceConfiguration =
                     processServiceConfigurationParameters(
+                            tokenRequestParameters.issuer,
                             tokenRequestParameters.serviceConfigurationParameters);
             performAuthorization(
                     serviceConfiguration,
@@ -408,6 +412,18 @@ public class FlutterAppauthPlugin
         return allowInsecureConnections
                 ? InsecureConnectionBuilder.INSTANCE
                 : DefaultConnectionBuilder.INSTANCE;
+    }
+
+    private AuthorizationServiceConfiguration processServiceConfigurationParameters(String issuer, Map<String, String> serviceConfigurationArguments) {
+        try {
+            JSONObject myInfoV4Config = new JSONObject();
+            myInfoV4Config.put("issuer", issuer);
+            myInfoV4Config.put("authorizationEndpoint", serviceConfigurationArguments.get("authorizationEndpoint"));
+            myInfoV4Config.put("tokenEndpoint", serviceConfigurationArguments.get("tokenEndpoint"));
+            return AuthorizationServiceConfiguration.fromJson(myInfoV4Config);
+        } catch (Exception ignored) {}
+        // Fallback
+        return processServiceConfigurationParameters(serviceConfigurationArguments);
     }
 
     private AuthorizationServiceConfiguration processServiceConfigurationParameters(
@@ -482,9 +498,8 @@ public class FlutterAppauthPlugin
             authRequestBuilder.setResponseMode(responseMode);
         }
 
-        if (nonce != null) {
-            authRequestBuilder.setNonce(nonce);
-        }
+        authRequestBuilder.setNonce(nonce);
+        authRequestBuilder.setState(null);
 
         if (additionalParameters != null && !additionalParameters.isEmpty()) {
 
@@ -509,6 +524,10 @@ public class FlutterAppauthPlugin
             String codeVerifierChallenge = additionalParameters.get("codeVerifierChallenge");
             String codeVerifierChallengeMethod = additionalParameters.get("codeVerifierChallengeMethod");
 
+            additionalParameters.remove("codeVerifier");
+            additionalParameters.remove("codeVerifierChallenge");
+            additionalParameters.remove("codeVerifierChallengeMethod");
+
             authRequestBuilder.setCodeVerifier(codeVerifier, codeVerifierChallenge, codeVerifierChallengeMethod);
 
             authRequestBuilder.setAdditionalParameters(additionalParameters);
@@ -517,10 +536,12 @@ public class FlutterAppauthPlugin
         }
 
         AuthorizationService authorizationService = getAuthorizationService();
-
+        AuthorizationRequest authorizationRequest = authRequestBuilder.build();
         try {
+            CustomTabsIntent.Builder customTabBuilder = authorizationService.getCustomTabManager().createTabBuilder(authorizationRequest.toUri());
+            customTabBuilder.setShowTitle(true);
             Intent authIntent =
-                    authorizationService.getAuthorizationRequestIntent(authRequestBuilder.build());
+                    authorizationService.getAuthorizationRequestIntent(authorizationRequest, customTabBuilder.build());
             mainActivity.startActivityForResult(
                     authIntent, exchangeCode ? RC_AUTH_EXCHANGE_CODE : RC_AUTH);
         } catch (ActivityNotFoundException ex) {
