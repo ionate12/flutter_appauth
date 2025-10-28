@@ -13,9 +13,23 @@
                   result:(FlutterResult)result
             exchangeCode:(BOOL)exchangeCode
                    nonce:(NSString *)nonce {
-  NSString *codeVerifier = [OIDAuthorizationRequest generateCodeVerifier];
-  NSString *codeChallenge =
-      [OIDAuthorizationRequest codeChallengeS256ForVerifier:codeVerifier];
+    NSString *codeVerifier = additionalParameters[@"codeVerifier"];
+    NSString *codeChallenge = additionalParameters[@"codeVerifierChallenge"];
+    NSString *codeChallengeMethod = additionalParameters[@"codeVerifierChallengeMethod"];
+
+    NSMutableDictionary *filteredAdditionalParameters =
+        [additionalParameters mutableCopy];
+    [filteredAdditionalParameters removeObjectForKey:@"codeVerifier"];
+    [filteredAdditionalParameters removeObjectForKey:@"codeVerifierChallenge"];
+    [filteredAdditionalParameters removeObjectForKey:@"codeVerifierChallengeMethod"];
+
+
+    if (!codeVerifier || !codeChallenge || !codeChallengeMethod) {
+    codeVerifier = [OIDAuthorizationRequest generateCodeVerifier];
+    codeChallenge =
+        [OIDAuthorizationRequest codeChallengeS256ForVerifier:codeVerifier];
+    codeChallengeMethod = OIDOAuthorizationRequestCodeChallengeMethodS256;
+    }
 
   OIDAuthorizationRequest *request = [[OIDAuthorizationRequest alloc]
       initWithConfiguration:serviceConfiguration
@@ -30,8 +44,8 @@
                                 : [OIDAuthorizationRequest generateState]
                codeVerifier:codeVerifier
               codeChallenge:codeChallenge
-        codeChallengeMethod:OIDOAuthorizationRequestCodeChallengeMethodS256
-       additionalParameters:additionalParameters];
+        codeChallengeMethod:codeChallengeMethod
+       additionalParameters:filteredAdditionalParameters];
   UIViewController *rootViewController = [self rootViewController];
   if (exchangeCode) {
     id<OIDExternalUserAgent> agent =
