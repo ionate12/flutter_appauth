@@ -190,47 +190,6 @@
 }
 
 - (UIViewController *)rootViewController {
-  NSLog(@"[AppAuth] rootViewController patch active: resolving topmost VC for in-app Safari");
-  NSArray<UIWindow *> *windows = nil;
-  if (@available(iOS 13, *)) {
-    NSSet<UIScene *> *scenes = [UIApplication sharedApplication].connectedScenes;
-    for (UIScene *scene in scenes) {
-      if ([scene isKindOfClass:[UIWindowScene class]] && scene.activationState == UISceneActivationStateForegroundActive) {
-        UIWindowScene *ws = (UIWindowScene *)scene;
-        if (ws.keyWindow) {
-          windows = @[ ws.keyWindow ];
-          break;
-        }
-      }
-    }
-    if (!windows.count) {
-      windows = [UIApplication sharedApplication].windows;
-    }
-  } else {
-    UIWindow *w = [UIApplication sharedApplication].delegate.window;
-    windows = w ? @[ w ] : @[];
-  }
-  UIViewController *keyWindowTopmost = nil;
-  for (UIWindow *window in windows) {
-    UIViewController *vc = window.rootViewController;
-    if (!vc) continue;
-    while (vc.presentedViewController) {
-      vc = vc.presentedViewController;
-    }
-    if (window.isKeyWindow) {
-      keyWindowTopmost = vc;
-      NSLog(@"[AppAuth] rootViewController patch: returning topmost VC %@ (presenting SFSafariViewController from this VC)", NSStringFromClass([vc class]));
-      return vc;
-    }
-    if (vc.view.window != nil) {
-      return vc;
-    }
-  }
-  if (keyWindowTopmost) {
-    NSLog(@"[AppAuth] rootViewController patch: returning keyWindow topmost VC %@", NSStringFromClass([keyWindowTopmost class]));
-    return keyWindowTopmost;
-  }
-  NSLog(@"[AppAuth] rootViewController patch: no key window topmost, falling back to original implementation");
   if (@available(iOS 13, *)) {
     return [[UIApplication sharedApplication].windows
                filteredArrayUsingPredicate:[NSPredicate
